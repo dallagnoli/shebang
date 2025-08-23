@@ -178,6 +178,7 @@ regionSettings() {
 checkEnv
 initScript
 userInfo
+changeKernel
 selectDisk
 regionSettings
 clear
