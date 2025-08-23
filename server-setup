@@ -311,14 +311,14 @@ EOF
 # --- Finish / Reboot ----------
 # ------------------------------
 
-printf "%b\n" "${GREEN}Rebooting system in 5 seconds...${RC}"
+printf "%b\n" "${GREEN}INFO:${RC} Rebooting system in 5 seconds..."
 sleep 1
-printf "%b\n" "${GREEN}Rebooting system in 4 seconds...${RC}"
+printf "%b\n" "${GREEN}INFO:${RC} Rebooting system in 4 seconds..."
 sleep 1
-printf "%b\n" "${GREEN}Rebooting system in 3 seconds...${RC}"
+printf "%b\n" "${GREEN}INFO:${RC} Rebooting system in 3 seconds..."
 sleep 1
-printf "%b\n" "${GREEN}Rebooting system in 2 seconds...${RC}"
+printf "%b\n" "${GREEN}INFO:${RC} Rebooting system in 2 seconds..."
 sleep 1
-printf "%b\n" "${GREEN}Rebooting system in 1 second...${RC}"
+printf "%b\n" "${GREEN}INFO:${RC} Rebooting system in 1 second..."
 sleep 1
 systemctl reboot
