@@ -288,6 +288,8 @@ sed -i 's/^# *%wheel ALL=(ALL:ALL) NOPASSWD: ALL/%wheel ALL=(ALL:ALL) NOPASSWD: 
 # ------------------------------
 
 su - "${USER}" -c 'cd /opt && sudo git clone https://aur.archlinux.org/yay-bin.git && sudo chown -R "${USER}":"${USER}" ./yay-bin && cd yay-bin && makepkg --noconfirm -si'
+su - "${USER}" -c 'cd "${HOME}" && mkdir -p github && cd github && git clone https://github.com/dallagnoli/shebang.git && cd shebang/core/gui && ./dwmGab'
+su - "${USER}" -c 'cd "${HOME}" && mkdir -p github && cd github && git clone https://github.com/dallagnoli/bash.git && cd bash && mkdir -p ~/.config/fastfetch ln -sf "${PWD}"/.bashrc ~/ && ln -sf "${PWD}"/config.jsonc ~/.config/fastfetch && ln -sf "${PWD}"/starship.toml ~/.config && yay -S starship fastfetch'
 
 # ------------------------------
 # --- Set Bootloader -----------
