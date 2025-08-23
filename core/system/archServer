@@ -60,7 +60,7 @@ initScript() {
 }
 
 # ------------------------------
-# --- Preferences --------------
+# --- User Options -------------
 # ------------------------------
 
 fuzzySelection() {
@@ -79,6 +79,7 @@ userInfo() {
             printf "%b\n" "${YELLOW}WARNING:${RC} Invalid username"
         fi
     done
+
     while :; do
         printf "\n%b " "${CYAN}Enter your password:${RC}"
         stty -echo
@@ -99,6 +100,7 @@ userInfo() {
             printf "\n%b\n" "${YELLOW}WARNING:${RC} Invalid password"
         fi  
     done
+
     while :; do
         printf "\n\n%b " "${CYAN}Name your machine:${RC}"
         read -r hostname
@@ -230,9 +232,9 @@ fi
 # ------------------------------
 
 if [ -n "${MICROCODE}" ]; then
-    pacstrap -K /mnt base base-devel "${LINUX}" linux-firmware networkmanager "${MICROCODE}"
+    pacstrap -K /mnt base base-devel git "${LINUX}" linux-firmware networkmanager "${MICROCODE}"
 else
-    pacstrap -K /mnt base base-devel "${LINUX}" linux-firmware networkmanager
+    pacstrap -K /mnt base base-devel git "${LINUX}" linux-firmware networkmanager
 fi
 
 genfstab -U /mnt >> /mnt/etc/fstab
@@ -280,6 +282,12 @@ useradd -m -G wheel -s /bin/bash "${USER}"
 printf "%s:%s\n" "${USER}" "${PASSWD}" | chpasswd
 printf "%s\n" "${HOST}" > /etc/hostname
 sed -i 's/^# *%wheel ALL=(ALL:ALL) NOPASSWD: ALL/%wheel ALL=(ALL:ALL) NOPASSWD: ALL/' /etc/sudoers
+
+# ------------------------------
+# --- Yay (AUR Helper) ---------
+# ------------------------------
+
+su - "${USER}" -c 'cd /opt && git clone https://aur.archlinux.org/yay-bin.git && chown -R "${USER}":"${USER}" ./yay-bin && cd yay-bin && makepkg --noconfirm -si'
 
 # ------------------------------
 # --- Set Bootloader -----------
