@@ -306,13 +306,11 @@ else
     fi
 fi
 EOF
-clear
 
 # ------------------------------
 # --- Finish / Reboot ----------
 # ------------------------------
 
-printf "%b\n" "${GREEN}Arch Linux has been successfully installed!${RC}"
 printf "%b\n" "${GREEN}Rebooting system in 5 seconds...${RC}"
 sleep 1
 printf "%b\n" "${GREEN}Rebooting system in 4 seconds...${RC}"
