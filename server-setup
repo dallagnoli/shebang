@@ -290,46 +290,29 @@ sed -i 's/^# *%wheel ALL=(ALL:ALL) NOPASSWD: ALL/%wheel ALL=(ALL:ALL) NOPASSWD: 
 # ------------------------------
 
 bootctl install
-
-printf "default @saved
-timeout 0
-console-mode max
-editor no\n" > /boot/loader/loader.conf
+printf "default @saved\ntimeout 0\nconsole-mode max\neditor no\n" > /boot/loader/loader.conf
 
 if [ "${LINUX}" = "linux-lts" ]; then
     if [ -n "${MICROCODE}" ]; then
-        printf "title Arch LTS
-        linux /vmlinuz-linux-lts
-        initrd /%s.img
-        initrd /initramfs-linux-lts.img
-        options root=UUID=%s rw\n" "${MICROCODE}" "${ROOT_UUID}" > /boot/loader/entries/lts.conf
+        printf "title Arch LTS\nlinux /vmlinuz-linux-lts\ninitrd /%s.img\ninitrd /initramfs-linux-lts.img\noptions root=UUID=%s rw\n" "${MICROCODE}" "${ROOT_UUID}" > /boot/loader/entries/lts.conf
     else
-        printf "title Arch LTS
-        linux /vmlinuz-linux-lts
-        initrd /initramfs-linux-lts.img
-        options root=UUID=%s rw\n" "${ROOT_UUID}" > /boot/loader/entries/lts.conf
+        printf "title Arch LTS\nlinux /vmlinuz-linux-lts\ninitrd /initramfs-linux-lts.img\noptions root=UUID=%s rw\n" "${ROOT_UUID}" > /boot/loader/entries/lts.conf
     fi
 else
     if [ -n "${MICROCODE}" ]; then
-        printf "title Arch Linux
-        linux /vmlinuz-linux
-        initrd /%s.img
-        initrd /initramfs-linux.img
-        options root=UUID=%s rw\n" "${MICROCODE}" "${ROOT_UUID}" > /boot/loader/entries/stock.conf
+        printf "title Arch Linux\nlinux /vmlinuz-linux\ninitrd /%s.img\ninitrd /initramfs-linux.img\noptions root=UUID=%s rw\n" "${MICROCODE}" "${ROOT_UUID}" > /boot/loader/entries/stock.conf
     else
-        printf "title Arch Linux
-        linux /vmlinuz-linux
-        initrd /initramfs-linux.img
-        options root=UUID=%s rw\n" "${ROOT_UUID}" > /boot/loader/entries/stock.conf
+        printf "title Arch Linux\nlinux /vmlinuz-linux\ninitrd /initramfs-linux.img\noptions root=UUID=%s rw\n" "${ROOT_UUID}" > /boot/loader/entries/stock.conf
     fi
 fi
 EOF
+clear
 
 # ------------------------------
 # --- Finish / Reboot ----------
 # ------------------------------
 
-printf "%b\n" "${GREEN}Installation Done!${RC}"
+printf "%b\n" "${GREEN}Arch Linux has been successfully installed!${RC}"
 printf "%b\n" "${GREEN}Rebooting system in 5 seconds...${RC}"
 sleep 1
 printf "%b\n" "${GREEN}Rebooting system in 4 seconds...${RC}"
