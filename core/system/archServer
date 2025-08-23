@@ -287,7 +287,7 @@ sed -i 's/^# *%wheel ALL=(ALL:ALL) NOPASSWD: ALL/%wheel ALL=(ALL:ALL) NOPASSWD: 
 # --- Yay (AUR Helper) ---------
 # ------------------------------
 
-su - "${USER}" -c 'cd /opt && git clone https://aur.archlinux.org/yay-bin.git && chown -R "${USER}":"${USER}" ./yay-bin && cd yay-bin && makepkg --noconfirm -si'
+su - "${USER}" -c 'cd /opt && sudo git clone https://aur.archlinux.org/yay-bin.git && sudo chown -R "${USER}":"${USER}" ./yay-bin && cd yay-bin && makepkg --noconfirm -si'
 
 # ------------------------------
 # --- Set Bootloader -----------
