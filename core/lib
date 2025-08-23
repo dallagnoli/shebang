@@ -1,0 +1,19 @@
+#!/bin/sh -e
+
+RC="\033[0m"
+RED="\033[31m"
+YELLOW="\033[33m"
+CYAN="\033[36m"
+GREEN="\033[32m"
+
+# ------------------------------
+# --- AUR Helper Check ---------
+# ------------------------------
+
+if ! command -v yay >/dev/null 2>&1; then
+    printf "%b\n" "${CYAN}Yay not found, installing it right now...${RC}"
+    sudo pacman -S --noconfirm --needed git base-devel
+    cd /opt && sudo git clone https://aur.archlinux.org/yay-bin.git && sudo chown -R "$USER":"$USER" ./yay-bin
+    cd yay-bin && makepkg --noconfirm -si
+fi
+
