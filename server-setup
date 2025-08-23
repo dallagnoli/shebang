@@ -1,0 +1,339 @@
+#!/bin/sh -e
+
+# ------------------------------
+# --- Color Definition ---------
+# ------------------------------
+
+RC="\033[0m"
+RED="\033[31m"
+YELLOW="\033[33m"
+CYAN="\033[36m"
+GREEN="\033[32m"
+
+# ------------------------------
+# --- Launch Functions ---------
+# ------------------------------
+
+checkEnv() {
+    if [ ! -f /run/archiso/bootmnt/arch/x86_64/airootfs.sfs ]; then
+        printf "%b\n" "${RED}ERROR: Archiso could not be detected.${RC}"
+        exit 1
+    fi
+
+    if [ ! -d /sys/firmware/efi ]; then
+        printf "%b\n" "${RED}ERROR: Only UEFI is supported.${RC}"
+        exit 1
+    fi
+
+    if [ "$(id -u)" -ne 0 ]; then
+        printf "%b\n" "${RED}ERROR: Root privileges needed.${RC}"
+        exit 1
+    fi
+
+    if [ -f /var/lib/pacman/db.lck ]; then
+        if pgrep -x pacman >/dev/null 2>&1; then
+            printf "%b\n" "${RED}ERROR: Pacman must be closed.${RC}"
+            exit 1
+        else
+            rm -f /var/lib/pacman/db.lck
+        fi
+    fi
+}
+
+initScript() {
+    printf "%b\n" "${CYAN}Getting pacman ready...${RC}"    
+    pacman-key --init >/dev/null 2>&1
+    pacman-key --populate archlinux >/dev/null 2>&1
+    pacman -Sy --noconfirm --needed archlinux-keyring >/dev/null 2>&1 || {
+        printf "%b\n" "${RED}ERROR: Failed to update keyring.${RC}" >&2
+        exit 1
+    }
+
+    if ! command -v fzf >/dev/null 2>&1; then
+        printf "%b\n" "${CYAN}Installing fuzzy finder...${RC}"
+        pacman -S --noconfirm --needed fzf >/dev/null 2>&1 || {
+            printf "%b\n" "${RED}ERROR: Failed to install fzf.${RC}" >&2
+            exit 1
+        }
+    fi
+
+    clear
+    setfont ter-132b
+    sed -i 's/^#\?ParallelDownloads = .*/ParallelDownloads = 10/' /etc/pacman.conf
+    sed -i 's/^#Color/Color\nILoveCandy/' /etc/pacman.conf
+}
+
+# ------------------------------
+# --- Preferences --------------
+# ------------------------------
+
+fuzzySelection() {
+    printf "%b\n" "${options}" | fzf --prompt "${prompt}"
+}
+
+userInfo() {
+    while :; do
+        printf "\n%b " "${CYAN}Enter your username:${RC}"
+        read -r username
+        username=$(printf "%s" "${username}" | xargs | tr "[:upper:]" "[:lower:]")
+        if [ "${username}" != "root" ] && printf "%s" "${username}" | grep -Eq "^[a-z][-a-z0-9_]*\$"; then
+            USER="${username}"
+            break
+        else
+            printf "%b\n" "${YELLOW}WARNING:${RC} Invalid username"
+        fi
+    done
+    while :; do
+        printf "\n%b " "${CYAN}Enter your password:${RC}"
+        stty -echo
+        read -r password
+        stty echo
+
+        printf "\n%b " "${CYAN}Verify your password:${RC}"
+        stty -echo
+        read -r verify
+        stty echo
+
+        if [ "${password}" != "${verify}" ]; then
+            printf "\n%b\n" "${YELLOW}WARNING:${RC} Passwords do not match"
+        elif [ "${password}" = "${verify}" ] && [ -n "${password}" ]; then
+            PASSWD="${password}"
+            break
+        else
+            printf "\n%b\n" "${YELLOW}WARNING:${RC} Invalid password"
+        fi  
+    done
+    while :; do
+        printf "\n\n%b " "${CYAN}Name your machine:${RC}"
+        read -r hostname
+        hostname=$(printf "%s" "${hostname}" | xargs | tr "[:upper:]" "[:lower:]")
+        if printf "%s" "${hostname}" | grep -Eq "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])\.)*([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])$"; then
+            HOST="${hostname}"
+            break
+        else
+            printf "%b" "${YELLOW}WARNING:${RC} Invalid hostname"
+        fi
+    done
+}
+
+changeKernel() {
+    while :; do
+        printf "%b " "${CYAN}Kernel is set to LTS. Switch to Bleeding Edge? [y/N]${RC}"
+        read -r stock_kernel
+        stock_kernel=$(printf "%s" "${stock_kernel}" | xargs | tr "[:upper:]" "[:lower:]")
+
+        if [ "${stock_kernel}" != "y" ] && [ "${stock_kernel}" != "n" ] && [ -n "${stock_kernel}" ]; then
+            printf "%b\n" "${YELLOW}WARNING: Invalid input${RC}"
+        elif [ "${stock_kernel}" = "n" ] || [ -z "${stock_kernel}" ]; then
+            LINUX="linux-lts"
+            break
+        else
+            LINUX="linux"
+            break
+        fi
+    done
+}
+
+selectDisk() {
+    options=$(lsblk -dn -o NAME,SIZE,TYPE,TRAN | awk '$3 == "disk" && $4 != "usb" && $1 !~ /^(loop|ram|sr|fd)/ {printf "/dev/%s (%s)\n", $1, $2}')
+    prompt="Select a disk: "
+
+    selected=$(fuzzySelection)
+    DISK=$(printf "%s" "${selected}" | tr -s ' ' | cut -d' ' -f1)
+}
+
+regionSettings() {
+    options=$(curl -fs http://bin.christitus.com/raw/dalopenori)
+    prompt="Select your country: "
+    COUNTRY=$(fuzzySelection)
+
+    case "${COUNTRY}" in
+        "Brazil")
+            LOCALE="pt_BR.UTF-8"
+            ;;
+        "United States")
+            LOCALE="en_US.UTF-8"
+            ;;
+        *)
+            options=$(awk '{ sub(/^#/, ""); if ($1 ~ /\.UTF-8$/) print $1 }' /etc/locale.gen)
+            prompt="Select your language: "
+            LOCALE=$(fuzzySelection)
+            ;;
+    esac
+
+    LOCALE_LONG="${LOCALE} UTF-8"
+
+    options=$(awk '/^[^#]/ { print $3 }' /usr/share/zoneinfo/zone.tab)
+    prompt="Select your timezone: "
+    TIMEZONE=$(fuzzySelection)
+
+    options=$(localectl list-keymaps)
+    prompt="Select your layout: "
+    KEYMAP=$(fuzzySelection)
+
+    printf "\n%b%s%b\n" "${CYAN}" "Fetching fastest mirrors for ${COUNTRY}..." "${RC}"
+    reflector --country "${COUNTRY}" --latest 5 --protocol https --save /etc/pacman.d/mirrorlist >/dev/null 2>&1
+}
+
+checkEnv
+initScript
+userInfo
+selectDisk
+regionSettings
+clear
+
+# ------------------------------
+# --- Disk Partition -----------
+# ------------------------------
+
+umount -A --recursive /mnt || true
+sgdisk -Z "${DISK}"
+sgdisk -a 2048 "${DISK}"
+
+sgdisk -n 1::+1G -t=1:ef00 -c=1:"EFI" "${DISK}"
+sgdisk -n 2::-0 -t=2:8300 -c=2:"ROOT" "${DISK}"
+
+partprobe "${DISK}"
+
+# ------------------------------
+# --- Filesystem Creation ------
+# ------------------------------
+
+case "${DISK}" in
+    *nvme*)
+        P1="${DISK}p1"
+        P2="${DISK}p2"
+        ;;
+    *)
+        P1="${DISK}1"
+        P2="${DISK}2"
+        ;;
+esac
+
+mkfs.fat -F 32 -n "EFI" "${P1}"
+mkfs.ext4 -F -L "ROOT" "${P2}"
+
+ROOT_UUID=$(blkid -s UUID -o value "${P2}")
+
+# ------------------------------
+# --- CPU Info -----------------
+# ------------------------------
+
+if grep -q "GenuineIntel" /proc/cpuinfo; then
+    MICROCODE="intel-ucode"
+elif grep -q "AuthenticAMD" /proc/cpuinfo; then
+    MICROCODE="amd-ucode"
+fi
+
+# ------------------------------
+# --- Base System / Chroot -----
+# ------------------------------
+
+if [ -n "${MICROCODE}" ]; then
+    pacstrap -K /mnt base base-devel "${LINUX}" linux-firmware networkmanager "${MICROCODE}"
+else
+    pacstrap -K /mnt base base-devel "${LINUX}" linux-firmware networkmanager
+fi
+
+genfstab -U /mnt >> /mnt/etc/fstab
+arch-chroot /mnt /bin/bash <<EOF
+
+# ------------------------------
+# --- Pacman Settings ----------
+# ------------------------------
+
+sed -i 's/^#\?ParallelDownloads = .*/ParallelDownloads = 10/' /etc/pacman.conf
+sed -i 's/^#Color/Color\nILoveCandy/' /etc/pacman.conf
+sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf
+pacman -Sy --noconfirm --needed
+
+# ------------------------------
+# --- Essential Services -------
+# ------------------------------
+
+systemctl enable NetworkManager.service
+systemctl enable fstrim.timer
+
+# ------------------------------
+# --- Set Region / Locale ------
+# ------------------------------
+
+sed -i "s/^#${LOCALE_LONG}/${LOCALE_LONG}/" /etc/locale.gen
+locale-gen
+printf "LANG=%s\n" "${LOCALE}" > /etc/locale.conf
+
+ln -sf /usr/share/zoneinfo/${TIMEZONE} /etc/localtime
+hwclock --systohc
+
+printf "KEYMAP=%s\n" "${KEYMAP}" > /etc/vconsole.conf
+
+if [ "${KEYMAP}" = "br-abnt2" ]; then
+    mkdir -p /etc/X11/xorg.conf.d
+    printf 'Section "InputClass"\n\tIdentifier "system-keyboard"\n\tMatchIsKeyboard "on"\n\tOption "XkbLayout" "br"\n\tOption "XkbModel" "abnt2"\nEndSection\n' > /etc/X11/xorg.conf.d/00-keyboard.conf
+fi
+
+# ------------------------------
+# --- Set User / Sudo ----------
+# ------------------------------
+
+useradd -m -G wheel -s /bin/bash "${USER}"
+printf "%s:%s\n" "${USER}" "${PASSWD}" | chpasswd
+printf "%s\n" "${HOST}" > /etc/hostname
+sed -i 's/^# *%wheel ALL=(ALL:ALL) NOPASSWD: ALL/%wheel ALL=(ALL:ALL) NOPASSWD: ALL/' /etc/sudoers
+
+# ------------------------------
+# --- Set Bootloader -----------
+# ------------------------------
+
+bootctl install
+
+printf "default @saved
+timeout 0
+console-mode max
+editor no\n" > /boot/loader/loader.conf
+
+if [ "${LINUX}" = "linux-lts" ]; then
+    if [ -n "${MICROCODE}" ]; then
+        printf "title Arch LTS
+        linux /vmlinuz-linux-lts
+        initrd /%s.img
+        initrd /initramfs-linux-lts.img
+        options root=UUID=%s rw\n" "${MICROCODE}" "${ROOT_UUID}" > /boot/loader/entries/lts.conf
+    else
+        printf "title Arch LTS
+        linux /vmlinuz-linux-lts
+        initrd /initramfs-linux-lts.img
+        options root=UUID=%s rw\n" "${ROOT_UUID}" > /boot/loader/entries/lts.conf
+    fi
+else
+    if [ -n "${MICROCODE}" ]; then
+        printf "title Arch Linux
+        linux /vmlinuz-linux
+        initrd /%s.img
+        initrd /initramfs-linux.img
+        options root=UUID=%s rw\n" "${MICROCODE}" "${ROOT_UUID}" > /boot/loader/entries/stock.conf
+    else
+        printf "title Arch Linux
+        linux /vmlinuz-linux
+        initrd /initramfs-linux.img
+        options root=UUID=%s rw\n" "${ROOT_UUID}" > /boot/loader/entries/stock.conf
+    fi
+fi
+EOF
+
+# ------------------------------
+# --- Finish / Reboot ----------
+# ------------------------------
+
+printf "%b\n" "${GREEN}Installation Done!${RC}"
+printf "%b\n" "${GREEN}Rebooting system in 5 seconds...${RC}"
+sleep 1
+printf "%b\n" "${GREEN}Rebooting system in 4 seconds...${RC}"
+sleep 1
+printf "%b\n" "${GREEN}Rebooting system in 3 seconds...${RC}"
+sleep 1
+printf "%b\n" "${GREEN}Rebooting system in 2 seconds...${RC}"
+sleep 1
+printf "%b\n" "${GREEN}Rebooting system in 1 second...${RC}"
+sleep 1
+systemctl reboot
