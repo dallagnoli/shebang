@@ -21,7 +21,7 @@ checkEnv() {
     fi
 
     if [ ! -d /sys/firmware/efi ]; then
-        printf "%b\n" "${RED}ERROR:${RC} Only UEFI is supported"
+        printf "%b\n" "${RED}ERROR:${RC} Only UEFI systems are supported"
         exit 1
     fi
 
