@@ -16,23 +16,23 @@ GREEN="\033[32m"
 
 checkEnv() {
     if [ ! -f /run/archiso/bootmnt/arch/x86_64/airootfs.sfs ]; then
-        printf "%b\n" "${RED}ERROR: Archiso could not be detected.${RC}"
+        printf "%b\n" "${RED}ERROR: Archiso could not be detected${RC}"
         exit 1
     fi
 
     if [ ! -d /sys/firmware/efi ]; then
-        printf "%b\n" "${RED}ERROR: Only UEFI is supported.${RC}"
+        printf "%b\n" "${RED}ERROR: Only UEFI is supported${RC}"
         exit 1
     fi
 
     if [ "$(id -u)" -ne 0 ]; then
-        printf "%b\n" "${RED}ERROR: Root privileges needed.${RC}"
+        printf "%b\n" "${RED}ERROR: Root privileges needed${RC}"
         exit 1
     fi
 
     if [ -f /var/lib/pacman/db.lck ]; then
         if pgrep -x pacman >/dev/null 2>&1; then
-            printf "%b\n" "${RED}ERROR: Pacman must be closed.${RC}"
+            printf "%b\n" "${RED}ERROR: Pacman must be closed${RC}"
             exit 1
         else
             rm -f /var/lib/pacman/db.lck
@@ -45,14 +45,14 @@ initScript() {
     pacman-key --init >/dev/null 2>&1
     pacman-key --populate archlinux >/dev/null 2>&1
     pacman -Sy --noconfirm --needed archlinux-keyring >/dev/null 2>&1 || {
-        printf "%b\n" "${RED}ERROR: Failed to update keyring.${RC}" >&2
+        printf "%b\n" "${RED}ERROR: Failed to update keyring${RC}" >&2
         exit 1
     }
 
     if ! command -v fzf >/dev/null 2>&1; then
         printf "%b\n" "${CYAN}Installing fuzzy finder...${RC}"
         pacman -S --noconfirm --needed fzf >/dev/null 2>&1 || {
-            printf "%b\n" "${RED}ERROR: Failed to install fzf.${RC}" >&2
+            printf "%b\n" "${RED}ERROR: Failed to install fzf${RC}" >&2
             exit 1
         }
     fi
