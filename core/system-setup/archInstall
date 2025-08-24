@@ -242,20 +242,20 @@ esac
 # ------------------------------
 
 if [ -n "${MICROCODE}" ] && [ "${VM}" = "n" ]; then
-    pacstrap -K /mnt base base-devel git linux-firmware "${LINUX}" "${MICROCODE}"
+    pacstrap -K /mnt base base-devel git networkmanager linux-firmware "${LINUX}" "${MICROCODE}"
 elif [ -n "${MICROCODE}" ] && [ "${VM}" = "y" ]; then
-    pacstrap -K /mnt base base-devel git "${LINUX}" "${MICROCODE}"
+    pacstrap -K /mnt base base-devel git networkmanager "${LINUX}" "${MICROCODE}"
 elif [ ! -n "${MICROCODE}" ] && [ "${VM}" = "n" ]; then
-    pacstrap -K /mnt base base-devel git linux-firmware "${LINUX}"
+    pacstrap -K /mnt base base-devel git networkmanager linux-firmware "${LINUX}"
 else
-    pacstrap -K /mnt base base-devel git "${LINUX}"
+    pacstrap -K /mnt base base-devel git networkmanager "${LINUX}"
 fi
 
 genfstab -U /mnt >> /mnt/etc/fstab
 arch-chroot /mnt /bin/bash <<EOF
 
 # ------------------------------
-# --- Pacman Settings ----------
+# --- Multilib / Eye Candy -----
 # ------------------------------
 
 sed -i 's/^#Color/Color\nILoveCandy/' /etc/pacman.conf
@@ -290,10 +290,17 @@ printf "%s\n" "${HOST}" > /etc/hostname
 sed -i 's/^# *%wheel ALL=(ALL:ALL) NOPASSWD: ALL/%wheel ALL=(ALL:ALL) NOPASSWD: ALL/' /etc/sudoers
 
 # ------------------------------
-# --- Extra Tuning -------------
+# --- Yay AUR Helper -----------
 # ------------------------------
 
 su - "${USER}" -c "cd /tmp && git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg --noconfirm -si"
+
+# ------------------------------
+# --- System Services ----------
+# ------------------------------
+
+systemctl enable NetworkManager.service
+systemctl enable fstrim.timer
 
 # ------------------------------
 # --- Systemd-Boot -------------
