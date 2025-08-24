@@ -1,0 +1,26 @@
+#!/bin/sh -e
+
+. ../lib
+
+getDependencies() {
+    yay -S --noconfirm --needed git ttf-meslo-nerd bash-completion starship zoxide fzf fastfetch ripgrep trash-cli tar xz zstd gzip bzip2 unzip unrar p7zip
+}
+
+setBashPrompt() {
+    FASTFETCH_DIR="${CONF_DIR}/fastfetch"
+    STARSHIP_PATH="${CONF_DIR}/starship.toml"
+    BASHRC_PATH="${HOME}/.bashrc"
+
+    mkdir -p "${FASTFETCH_DIR}" && cd "${GH_DIR}"
+
+    if [ ! -d "bash" ]; then
+        git clone https://github.com/dallagnoli/bash.git
+    else
+        rm -rf bash && git clone https://github.com/dallagnoli/bash.git
+    fi
+
+    cd bash && ln -sfn "${PWD}/config.jsonc" "${FASTFETCH_DIR}" && ln -sfn "${PWD}/starship.toml" "${STARSHIP_PATH}" && ln -sfn "${PWD}/.bashrc" "${BASHRC_PATH}"
+}
+
+getDependencies
+setBashPrompt

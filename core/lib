@@ -1,5 +1,9 @@
 #!/bin/sh -e
 
+# ------------------------------
+# --- Color Definitions --------
+# ------------------------------
+
 RC="\033[0m"
 RED="\033[31m"
 YELLOW="\033[33m"
@@ -7,13 +11,66 @@ CYAN="\033[36m"
 GREEN="\033[32m"
 
 # ------------------------------
-# --- AUR Helper Check ---------
+# --- Path Definitions ---------
 # ------------------------------
 
-if ! command -v yay >/dev/null 2>&1; then
-    printf "%b\n" "${CYAN}Yay not found, installing it right now...${RC}"
-    sudo pacman -S --noconfirm --needed git base-devel
-    cd /opt && sudo git clone https://aur.archlinux.org/yay-bin.git && sudo chown -R "$USER":"$USER" ./yay-bin
-    cd yay-bin && makepkg --noconfirm -si
-fi
+GH_DIR="${HOME}/github" && mkdir -p "${GH_DIR}"
+CONF_DIR="${HOME}/.config" && mkdir -p "${CONF_DIR}"
 
+# ------------------------------
+# --- Arch Linux Check ---------
+# ------------------------------
+
+checkDistro() {
+    if [ -f "/etc/os-release" ]; then
+        . /etc/os-release
+
+        case "${NAME}" in
+            "Arch Linux")
+                ;;
+            *)
+                printf "%b\n" "${RED}ERROR:${RC} Arch Linux was not detected" && exit 1
+                ;;
+        esac
+    fi
+}
+
+# ------------------------------
+# --- Yay Check ----------------
+# ------------------------------
+
+checkYay() {
+    if ! command -v yay >/dev/null 2>&1; then
+        cd /tmp && rm -rf yay-bin && git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg --noconfirm -si
+    fi
+}
+
+# ------------------------------
+# --- Sudo Check ---------------
+# ------------------------------
+
+checkSudo() {
+    USER_GROUPS=$(groups "${USER}")
+
+    for grp in ${USER_GROUPS}; do
+        case "${grp}" in
+            wheel|sudo)
+                IS_SUDO="y"
+                ;;
+        esac
+    done
+
+    if [ "${IS_SUDO}" != "y" ]; then
+        printf "%b\n" "${RED}ERROR:${RC} User has no sudo rights"
+        exit 1
+    fi
+
+    if [ "$(id -u)" -eq 0 ]; then
+        printf "%b\n" "${RED}ERROR:${RC} User must not be root"
+        exit 1
+    fi
+}
+
+checkDistro
+checkYay
+checkSudo

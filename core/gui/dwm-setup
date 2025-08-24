@@ -1,0 +1,32 @@
+#!/bin/sh -e
+
+. ../lib
+
+getDependencies() {
+    yay -S --noconfirm --needed git base-devel xorg-server xorg-xrandr xorg-xinit alacritty rofi thunar gvfs flameshot feh dunst mate-polkit picom-ftlabs-git ttf-meslo-nerd noto-fonts noto-fonts-emoji papirus-icon-theme 
+}
+
+setDwmAndDots() {
+    SCREENSHOT_DIR="${HOME}/media/images/screenshots"
+    BACKGROUND_DIR="${HOME}/media/images/backgrounds"
+    ALACRITTY_DIR="${CONF_DIR}/alacritty"
+    ROFI_DIR="${CONF_DIR}/rofi"
+    XINIT_PATH="${HOME}/.xinitrc"
+
+    mkdir -p "${SCREENSHOT_DIR}" && cd "${GH_DIR}" 
+
+    if [ ! -d "dwm" ]; then
+        git clone https://github.com/dallagnoli/dwm.git
+    else
+        rm -rf dwm && git clone https://github.com/dallagnoli/dwm.git
+    fi
+
+    cd dwm && sudo make clean install && cd slstatus && sudo make clean install
+    ln -sfn "${PWD}/../alacritty" "${ALACRITTY_DIR}"
+    ln -sfn "${PWD}/../rofi" "${ROFI_DIR}"
+    rm -rf "${BACKGROUND_DIR}" && mkdir -p "${BACKGROUND_DIR}" && cd "${BACKGROUND_DIR}" && git clone https://github.com/dallagnoli/bkg.git .
+    printf "exec dwm\n" > "${XINIT_PATH}"
+}
+
+getDependencies
+setDwmAndDots
