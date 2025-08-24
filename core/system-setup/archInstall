@@ -7,7 +7,7 @@ CYAN="\033[36m"
 GREEN="\033[32m"
 
 # ------------------------------
-# --- Launch Functions ---------
+# --- Run At Launch ------------
 # ------------------------------
 
 checkEnv() {
@@ -55,12 +55,11 @@ initScript() {
 
     clear
     setfont ter-132b
-    sed -i 's/^#\?ParallelDownloads = .*/ParallelDownloads = 10/' /etc/pacman.conf
     sed -i 's/^#Color/Color\nILoveCandy/' /etc/pacman.conf
 }
 
 # ------------------------------
-# --- User Options -------------
+# --- Install Presets ----------
 # ------------------------------
 
 fuzzySelection() {
@@ -121,7 +120,7 @@ changeKernel() {
         stock_kernel=$(printf "%s" "${stock_kernel}" | xargs | tr "[:upper:]" "[:lower:]")
 
         if [ "${stock_kernel}" != "y" ] && [ "${stock_kernel}" != "n" ] && [ -n "${stock_kernel}" ]; then
-            printf "%b\n" "${YELLOW}WARNING: Invalid input${RC}"
+            printf "%b\n" "${YELLOW}WARNING:${RC} Invalid input"
         elif [ "${stock_kernel}" = "n" ] || [ -z "${stock_kernel}" ]; then
             LINUX="linux-lts"
             break
@@ -182,7 +181,7 @@ regionSettings
 clear
 
 # ------------------------------
-# --- Disk Partition -----------
+# --- Zap / Partition ----------
 # ------------------------------
 
 umount -A --recursive /mnt || true
@@ -195,7 +194,7 @@ sgdisk -n 2::-0 -t=2:8300 -c=2:"ROOT" "${DISK}"
 partprobe "${DISK}"
 
 # ------------------------------
-# --- Filesystem Creation ------
+# --- Make FS / Mount ----------
 # ------------------------------
 
 case "${DISK}" in
@@ -215,10 +214,10 @@ mkfs.ext4 -F -L "ROOT" "${P2}"
 mount "${P2}" /mnt
 mount --mkdir "${P1}" /mnt/boot
 
-ROOT_UUID=$(blkid -s UUID -o value "${P2}")
+ROOT_UUID=$(lsblk -dno UUID "${P2}")
 
 # ------------------------------
-# --- CPU Info -----------------
+# --- Fetch System Info --------
 # ------------------------------
 
 if grep -q "GenuineIntel" /proc/cpuinfo; then
@@ -227,14 +226,29 @@ elif grep -q "AuthenticAMD" /proc/cpuinfo; then
     MICROCODE="amd-ucode"
 fi
 
+isvm=$(systemd-detect-virt)
+
+case "${isvm}" in
+    "none")
+        VM="n"
+        ;;
+    *)
+        VM="y"
+        ;;
+esac
+
 # ------------------------------
 # --- Base System / Chroot -----
 # ------------------------------
 
-if [ -n "${MICROCODE}" ]; then
-    pacstrap -K /mnt base base-devel git "${LINUX}" linux-firmware networkmanager "${MICROCODE}"
+if [ -n "${MICROCODE}" ] && [ "${VM}" = "n" ]; then
+    pacstrap -K /mnt base base-devel git linux-firmware "${LINUX}" "${MICROCODE}"
+elif [ -n "${MICROCODE}" ] && [ "${VM}" = "y" ]; then
+    pacstrap -K /mnt base base-devel git "${LINUX}" "${MICROCODE}"
+elif [ ! -n "${MICROCODE}" ] && [ "${VM}" = "n" ]; then
+    pacstrap -K /mnt base base-devel git linux-firmware "${LINUX}"
 else
-    pacstrap -K /mnt base base-devel git "${LINUX}" linux-firmware networkmanager
+    pacstrap -K /mnt base base-devel git "${LINUX}"
 fi
 
 genfstab -U /mnt >> /mnt/etc/fstab
@@ -244,20 +258,12 @@ arch-chroot /mnt /bin/bash <<EOF
 # --- Pacman Settings ----------
 # ------------------------------
 
-sed -i 's/^#\?ParallelDownloads = .*/ParallelDownloads = 10/' /etc/pacman.conf
 sed -i 's/^#Color/Color\nILoveCandy/' /etc/pacman.conf
 sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf
 pacman -Sy --noconfirm --needed
 
 # ------------------------------
-# --- Essential Services -------
-# ------------------------------
-
-systemctl enable NetworkManager.service
-systemctl enable fstrim.timer
-
-# ------------------------------
-# --- Set Region / Locale ------
+# --- Lang / Time / Layout -----
 # ------------------------------
 
 sed -i "s/^#${LOCALE_LONG}/${LOCALE_LONG}/" /etc/locale.gen
@@ -275,7 +281,7 @@ if [ "${KEYMAP}" = "br-abnt2" ]; then
 fi
 
 # ------------------------------
-# --- Set User / Sudo ----------
+# --- Add User / Set Sudo ------
 # ------------------------------
 
 useradd -m -G wheel -s /bin/bash "${USER}"
@@ -284,7 +290,13 @@ printf "%s\n" "${HOST}" > /etc/hostname
 sed -i 's/^# *%wheel ALL=(ALL:ALL) NOPASSWD: ALL/%wheel ALL=(ALL:ALL) NOPASSWD: ALL/' /etc/sudoers
 
 # ------------------------------
-# --- Set Bootloader -----------
+# --- Extra Tuning -------------
+# ------------------------------
+
+su - "${USER}" -c "cd /tmp && git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg --noconfirm -si"
+
+# ------------------------------
+# --- Systemd-Boot -------------
 # ------------------------------
 
 bootctl install
@@ -292,9 +304,9 @@ printf "default @saved\ntimeout 0\nconsole-mode max\neditor no\n" > /boot/loader
 
 if [ "${LINUX}" = "linux-lts" ]; then
     if [ -n "${MICROCODE}" ]; then
-        printf "title Arch LTS\nlinux /vmlinuz-linux-lts\ninitrd /%s.img\ninitrd /initramfs-linux-lts.img\noptions root=UUID=%s rw\n" "${MICROCODE}" "${ROOT_UUID}" > /boot/loader/entries/lts.conf
+        printf "title Arch Linux (LTS)\nlinux /vmlinuz-linux-lts\ninitrd /%s.img\ninitrd /initramfs-linux-lts.img\noptions root=UUID=%s rw\n" "${MICROCODE}" "${ROOT_UUID}" > /boot/loader/entries/lts.conf
     else
-        printf "title Arch LTS\nlinux /vmlinuz-linux-lts\ninitrd /initramfs-linux-lts.img\noptions root=UUID=%s rw\n" "${ROOT_UUID}" > /boot/loader/entries/lts.conf
+        printf "title Arch Linux (LTS)\nlinux /vmlinuz-linux-lts\ninitrd /initramfs-linux-lts.img\noptions root=UUID=%s rw\n" "${ROOT_UUID}" > /boot/loader/entries/lts.conf
     fi
 else
     if [ -n "${MICROCODE}" ]; then
@@ -306,7 +318,7 @@ fi
 EOF
 
 # ------------------------------
-# --- Finish / Reboot ----------
+# --- Reboot System / End ------
 # ------------------------------
 
 printf "%b\n" "${GREEN}INFO:${RC} Rebooting system in 5 seconds..."

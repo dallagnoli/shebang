@@ -2,7 +2,7 @@
 
 . ../lib
 
-getDependencies() {
+installDependencies() {
     printf "%b\n" "${CYAN}Installing dynamic window manager...${RC}"
     yay -S --noconfirm --needed git base-devel xorg-server xorg-xrandr xorg-xinit alacritty rofi thunar gvfs flameshot feh dunst mate-polkit picom-ftlabs-git ttf-meslo-nerd noto-fonts noto-fonts-emoji papirus-icon-theme 
 }
