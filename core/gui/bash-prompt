@@ -4,7 +4,7 @@
 
 getDependencies() {
     printf "%b\n" "${CYAN}Installing bash profile dependencies...${RC}"
-    yay -S --noconfirm --needed git ttf-meslo-nerd bash-completion starship zoxide fzf fastfetch ripgrep trash-cli tar xz zstd gzip bzip2 unzip unrar p7zip
+    yay -S --noconfirm --needed git ttf-meslo-nerd bash-completion starship zoxide fzf bat fastfetch ripgrep trash-cli tar xz zstd gzip bzip2 unzip unrar p7zip
     printf "%b\n" "${GREEN}INFO:${RC} Bash profile dependencies successfully installed!"
 }
 
