@@ -3,14 +3,14 @@
 . ../lib
 
 getDependencies() {
+    printf "%b\n" "${CYAN}Installing bash profile dependencies...${RC}"
     yay -S --noconfirm --needed git ttf-meslo-nerd bash-completion starship zoxide fzf fastfetch ripgrep trash-cli tar xz zstd gzip bzip2 unzip unrar p7zip
+    printf "%b\n" "${GREEN}INFO:${RC} Bash profile dependencies successfully installed!"
 }
 
 setBashPrompt() {
+    printf "%b\n" "${CYAN}Configuring bash prompt...${RC}"
     FASTFETCH_DIR="${CONF_DIR}/fastfetch"
-    STARSHIP_PATH="${CONF_DIR}/starship.toml"
-    BASHRC_PATH="${HOME}/.bashrc"
-
     mkdir -p "${FASTFETCH_DIR}" && cd "${GH_DIR}"
 
     if [ ! -d "bash" ]; then
@@ -19,7 +19,8 @@ setBashPrompt() {
         rm -rf bash && git clone https://github.com/dallagnoli/bash.git
     fi
 
-    cd bash && ln -sfn "${PWD}/config.jsonc" "${FASTFETCH_DIR}" && ln -sfn "${PWD}/starship.toml" "${STARSHIP_PATH}" && ln -sfn "${PWD}/.bashrc" "${BASHRC_PATH}"
+    cd bash && ln -sfn "${PWD}/config.jsonc" "${FASTFETCH_DIR}" && ln -sfn "${PWD}/starship.toml" "${CONF_DIR}" && ln -sfn "${PWD}/.bashrc" "${HOME}"
+    printf "%b\n" "${GREEN}INFO:${RC} Bash prompt successfully configured!"
 }
 
 getDependencies
